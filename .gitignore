@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 *.egg-info/
 build/
+datapacks/
 dist/
 models/*.gguf
 *.log

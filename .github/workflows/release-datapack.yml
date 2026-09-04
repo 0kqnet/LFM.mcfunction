@@ -1,0 +1,137 @@
+name: Build release datapack
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to create or update (for example v0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-datapack-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install compiler
+        run: python -m pip install .
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -q
+
+      - name: Read locked model metadata
+        id: model
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          lock = json.loads(Path("model.lock.json").read_text(encoding="utf-8"))
+          model_path = Path("models") / lock["filename"]
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              print(f"url={lock['url']}", file=output)
+              print(f"sha256={lock['sha256']}", file=output)
+              print(f"filename={lock['filename']}", file=output)
+              print(f"path={model_path.as_posix()}", file=output)
+          PY
+
+      - name: Restore model cache
+        id: model-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.model.outputs.path }}
+          key: lfm-gguf-${{ steps.model.outputs.sha256 }}
+
+      - name: Download locked model
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        env:
+          MODEL_URL: ${{ steps.model.outputs.url }}
+          MODEL_PATH: ${{ steps.model.outputs.path }}
+        run: |
+          mkdir -p "$(dirname "$MODEL_PATH")"
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output "$MODEL_PATH" "$MODEL_URL"
+
+      - name: Verify model SHA-256
+        env:
+          MODEL_PATH: ${{ steps.model.outputs.path }}
+          MODEL_SHA256: ${{ steps.model.outputs.sha256 }}
+        run: echo "$MODEL_SHA256  $MODEL_PATH" | sha256sum --check --strict
+
+      - name: Compile full datapack
+        env:
+          MODEL_PATH: ${{ steps.model.outputs.path }}
+        run: llmcf compile-model "$MODEL_PATH" release/lfm --lock model.lock.json
+
+      - name: Package and verify datapack
+        id: package
+        shell: bash
+        run: |
+          archive_name="LFM2.5-1.2B-JP-202606-Q4_0-datapack.zip"
+          archive="$RUNNER_TEMP/$archive_name"
+          (
+            cd release/lfm
+            zip -q -9 -r "$archive" .
+          )
+          unzip -tq "$archive"
+          (
+            cd "$RUNNER_TEMP"
+            sha256sum "$archive_name" > "$archive_name.sha256"
+          )
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        env:
+          MANUAL_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            tag="$MANUAL_TAG"
+          else
+            tag="$GITHUB_REF_NAME"
+          fi
+          if [[ ! "$tag" =~ ^v[0-9A-Za-z._-]+$ ]]; then
+            echo "Invalid release tag: $tag" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Create release and upload datapack
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TAG" \
+              --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" \
+            "$ARCHIVE" \
+            "$ARCHIVE.sha256" \
+            --clobber

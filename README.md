@@ -5,6 +5,12 @@ Minecraft Java Edition 26.3 のコンテキスト値プロバイダーを使い�
 重みと埋め込みは structure の NBT チャンクとして保持し、実行時に一時的な
 marker entity から storage へ読み込みます。
 
+## 配布用データパック
+
+`v*`タグをpushするか、GitHub Actionsの`Build release datapack`を手動実行すると、
+固定済みQ4_0モデルからデータパックを完全生成し、ZIPとSHA-256ファイルを
+GitHub Releaseへ添付します。生成済みデータパック自体はGitで追跡しません。
+
 ## 現在できること
 
 - GGUF の Q4_0 / Q2_K / Q3_K / Q6_K 重みを Minecraft 用 NBT へ変換
@@ -29,9 +35,9 @@ python -m unittest discover -s tests -q
 
 ```powershell
 $env:PYTHONPATH='src'
-python -m llmcf.cli compile-bos-pack `
+python -m llmcf.cli compile-model `
   'models\LFM2.5-1.2B-JP-202606-Q4_0.gguf' `
-  'dist\bos-embedding-datapack' `
+  'dist\LFM2.5-1.2B-JP-202606-Q4_0-datapack' `
   --lock 'model.lock.json'
 ```
 
