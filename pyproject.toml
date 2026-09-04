@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llama-mcfunction"
+version = "0.1.0"
+description = "Compile GGUF LFM2.5 weights into a Minecraft 26.3 datapack"
+requires-python = ">=3.12"
+
+[project.scripts]
+llmcf = "llmcf.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

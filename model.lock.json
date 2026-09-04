@@ -1,0 +1,8 @@
+{
+  "repository": "LiquidAI/LFM2.5-1.2B-JP-202606-GGUF",
+  "revision": "8c74801fdfe71394c59d3f519b86de305ff49f00",
+  "filename": "LFM2.5-1.2B-JP-202606-Q4_0.gguf",
+  "size": 695750944,
+  "sha256": "9551fbaab0ced12f17f4070d2f7e36d0d9952750a8bde616137a91323f6afa9d",
+  "url": "https://huggingface.co/LiquidAI/LFM2.5-1.2B-JP-202606-GGUF/resolve/8c74801fdfe71394c59d3f519b86de305ff49f00/LFM2.5-1.2B-JP-202606-Q4_0.gguf"
+}
