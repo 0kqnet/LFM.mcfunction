@@ -1,4 +1,4 @@
-# llama.mcfunction
+# LFM.mcfunction
 
 Minecraft Java Edition 26.3 のコンテキスト値プロバイダーを使い、
 `LFM2.5-1.2B-JP-202606-Q4_0.gguf` をデータパック内で推論する実験です。
